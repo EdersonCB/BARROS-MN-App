@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuração BARROS_NIVEL</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .container {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Configuração BARROS_NIVEL</h1>
+    <label for="endereco">Endereço Escravo:</label>
+    <input type="number" id="endereco" placeholder="Endereço Escravo">
+    
+    <label for="velocidade">Velocidade RS485:</label>
+    <input type="number" id="velocidade" placeholder="Velocidade RS485">
+    
+    <label for="amostras">Número de Amostras:</label>
+    <input type="number" id="amostras" placeholder="Número de Amostras">
+    
+    <label for="regua">Valor da Régua (m):</label>
+    <input type="number" step="0.01" id="regua" placeholder="Valor da Régua">
+    
+    <label for="tempo">Tempo de Atualização (ms):</label>
+    <input type="number" id="tempo" placeholder="Tempo de Atualização">
+    
+    <button onclick="atualizarConfiguracoes()">Atualizar Configurações</button>
+    <button onclick="lerConfiguracoes()">Ler Configurações</button>
+  </div>
+
+  <script>
+    let dispositivoBluetooth;
+
+    async function conectarBluetooth() {
+      try {
+        dispositivoBluetooth = await navigator.bluetooth.requestDevice({
+          filters: [{ name: "BARROS_NIVEL" }],
+          optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] // Serviço Serial Bluetooth
+        });
+        const servidor = await dispositivoBluetooth.gatt.connect();
+        const servico = await servidor.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
+        const caracteristica = await servico.getCharacteristic('00001143-0000-1000-8000-00805f9b34fb');
+        alert("Conectado ao BARROS_NIVEL!");
+      } catch (erro) {
+        alert("Erro ao conectar: " + erro);
+      }
+    }
+
+    async function enviarComando(comando) {
+      if (!dispositivoBluetooth || !dispositivoBluetooth.gatt.connected) {
+        alert("Conecte-se ao dispositivo primeiro!");
+        return;
+      }
+      const servidor = await dispositivoBluetooth.gatt.connect();
+      const servico = await servidor.getPrimaryService('00001101-0000-1000-8000-00805f9b34fb');
+      const caracteristica = await servico.getCharacteristic('00001143-0000-1000-8000-00805f9b34fb');
+      await caracteristica.writeValue(new TextEncoder().encode(comando + '\n'));
+    }
+
+    function atualizarConfiguracoes() {
+      const endereco = document.getElementById('endereco').value;
+      const velocidade = document.getElementById('velocidade').value;
+      const amostras = document.getElementById('amostras').value;
+      const regua = document.getElementById('regua').value;
+      const tempo = document.getElementById('tempo').value;
+
+      if (endereco) enviarComando(`SET endereco=${endereco}`);
+      if (velocidade) enviarComando(`SET velocidade=${velocidade}`);
+      if (amostras) enviarComando(`SET amostras=${amostras}`);
+      if (regua) enviarComando(`SET regua=${regua}`);
+      if (tempo) enviarComando(`SET tempo=${tempo}`);
+    }
+
+    function lerConfiguracoes() {
+      enviarComando("GET");
+    }
+    
+    // Conectar automaticamente ao carregar a página
+    window.onload = conectarBluetooth;
+  </script>
+</body>
+</html>
